@@ -1,90 +1,124 @@
-# Hardhat Boilerplate
+# Turing DApp
 
-This repository contains a sample project that you can use as the starting point
-for your Ethereum project. It's also a great fit for learning the basics of
-smart contract development.
+DApp de votação dos projetos finais da disciplina, baseada no token **Turing (TUR)**.
+Desenvolvida a partir do [Hardhat Boilerplate](https://github.com/NomicFoundation/hardhat-boilerplate) (Atividade 12).
 
-This project is intended to be used with the
-[Hardhat Beginners Tutorial](https://hardhat.org/tutorial), but you should be
-able to follow it by yourself by reading the README and exploring its
-`contracts`, `tests`, `scripts` and `frontend` directories.
+- **Contrato:** `contracts/Turing.sol`, um token **ERC-20** (OpenZeppelin) com estratégia *Uncapped Lazy Supply*
+- **Frontend:** React + ethers.js + MetaMask
+- **Blockchain:** Hardhat Network local (chain ID 31337)
 
-## Quick start
+---
 
-The first things you need to do are cloning this repository and installing its
-dependencies:
+## Como executar
 
-```sh
-git clone https://github.com/NomicFoundation/hardhat-boilerplate.git
-cd hardhat-boilerplate
+Pré-requisitos: Node.js, Git e a extensão MetaMask no navegador.
+
+```bash
+git clone <URL_DESTE_REPOSITORIO>
+cd turing-dapp
 npm install
+cd frontend && npm install && cd ..
 ```
 
-Once installed, let's run Hardhat's testing network:
+São necessários **três terminais**:
 
-```sh
+**Terminal 1: blockchain local (manter aberto)**
+```bash
 npx hardhat node
 ```
 
-Then, on a new terminal, go to the repository's root folder and run this to
-deploy your contract:
-
-```sh
+**Terminal 2: deploy do contrato**
+```bash
 npx hardhat run scripts/deploy.js --network localhost
 ```
+O script publica o contrato e grava o endereço e a ABI em `frontend/src/contracts/`.
 
-Finally, we can run the frontend with:
-
-```sh
+**Terminal 3: frontend (manter aberto)**
+```bash
 cd frontend
-npm install
-npm start
+npm run start
+```
+A dApp abre em `http://localhost:3000`.
+
+### Configurando o MetaMask
+
+1. Adicione a rede: RPC `http://127.0.0.1:8545/`, chain ID `31337`.
+2. Importe as contas pelas chaves privadas exibidas no Terminal 1:
+   - **Account #0:** owner (superusuário)
+   - **Accounts #1 a #19:** alunos `nome1` a `nome19`
+3. Sempre que reiniciar o `npx hardhat node`, refaça o deploy e use *Configurações → Avançado → Limpar dados da guia de atividades* no MetaMask (evita erro de *nonce*).
+
+### Testes
+
+```bash
+npx hardhat test test/Turing.js
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/) to see your Dapp. You will
-need to have [Coinbase Wallet](https://www.coinbase.com/wallet) or [Metamask](https://metamask.io) installed and listening to
-`localhost 8545`.
+---
 
-## User Guide
+## O contrato
 
-You can find detailed instructions on using this repository and many tips in [its documentation](https://hardhat.org/tutorial).
+### Estado
 
-- [Writing and compiling contracts](https://hardhat.org/tutorial/writing-and-compiling-contracts/)
-- [Setting up the environment](https://hardhat.org/tutorial/setting-up-the-environment/)
-- [Testing Contracts](https://hardhat.org/tutorial/testing-contracts/)
-- [Setting up your wallet](https://hardhat.org/tutorial/boilerplate-project#how-to-use-it)
-- [Hardhat's full documentation](https://hardhat.org/docs/)
+| Variável | Descrição |
+|---|---|
+| `owner` | Conta que fez o deploy |
+| `voting` | Votação ativa? Inicializada em `true` |
+| `users` | `codinome → endereço` (pedido na especificação) |
+| `codinomeOf` | `endereço → codinome` (mapa reverso, para identificar quem vota) |
+| `codinomes` | Lista de todos os codinomes (mappings não são iteráveis) |
+| `hasVote` | `votante → (alvo → bool)`: quem já votou em quem |
+| `voteCount` | Quantos votos cada codinome já deu (para o bônus) |
 
-For a complete introduction to Hardhat, refer to [this guide](https://hardhat.org/getting-started/#overview).
+### Funções
 
-## What's Included?
+| Função | Quem pode | O que faz |
+|---|---|---|
+| `updateUser(codinome, addr)` | owner ou professora | Atualiza o endereço do codinome (o endereço antigo perde o acesso) |
+| `votingOn()` | owner ou professora | `voting = true` |
+| `votingOff()` | owner ou professora | `voting = false` |
+| `issueToken(codinome, qtde)` | owner ou professora | Cria (*mint*) `qtde` Turings na carteira do codinome |
+| `vote(codinome, qtde)` | usuários da tabela | Cria `qtde` Turings para o codinome votado; a cada 10 votos, o votante ganha 1 Turing |
+| `getCodinomes()` | qualquer um (leitura) | Retorna a lista de codinomes (usada pelo frontend) |
 
-This repository uses our recommended hardhat setup, by using our [`@nomicfoundation/hardhat-toolbox`](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-toolbox). When you use this plugin, you'll be able to:
+A restrição "apenas owner ou professora" é implementada pelo modifier `onlyOwnerOrProfessora`, e "apenas usuários pré-autorizados" pelo modifier `onlyAuthorized`.
 
-- Deploy and interact with your contracts using [ethers.js](https://docs.ethers.io/v5/) and the [`hardhat-ethers`](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-ethers) plugin.
-- Test your contracts with [Mocha](https://mochajs.org/), [Chai](https://chaijs.com/) and our own [Hardhat Chai Matchers](https://hardhat.org/hardhat-chai-matchers) plugin.
-- Interact with Hardhat Network with our [Hardhat Network Helpers](https://hardhat.org/hardhat-network-helpers).
-- Verify the source code of your contracts with the [hardhat-etherscan](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-etherscan) plugin.
-- Get metrics on the gas used by your contracts with the [hardhat-gas-reporter](https://github.com/cgewecke/hardhat-gas-reporter) plugin.
-- Measure your tests coverage with [solidity-coverage](https://github.com/sc-forks/solidity-coverage).
+### Regras do `vote`
 
-This project also includes [a sample frontend/Dapp](./frontend), which uses [Create React App](https://github.com/facebook/create-react-app).
+1. A votação deve estar ativa.
+2. Só usuários pré-autorizados (da tabela).
+3. Não é possível votar em si mesmo.
+4. `0 < qtde ≤ 2` Turings.
+5. Cada usuário vota uma única vez em cada codinome.
 
-## Troubleshooting
+### Unidades
 
-- `Invalid nonce` errors: if you are seeing this error on the `npx hardhat node`
-  console, try resetting your Metamask account. This will reset the account's
-  transaction history and also the nonce. Open Metamask, click on your account
-  followed by `Settings > Advanced > Clear activity tab data`.
+O Turing tem **18 casas decimais** (como ETH/wei): 1 TUR = 10¹⁸ unidades. Por isso o limite do voto é `2 * 10**decimals()` e o bônus é `10**decimals()`. O frontend converte os valores digitados com `parseUnits`/`formatUnits`.
 
-## Setting up your editor
+---
 
-[Hardhat for Visual Studio Code](https://hardhat.org/hardhat-vscode) is the official Hardhat extension that adds advanced support for Solidity to VSCode. If you use Visual Studio Code, give it a try!
+## O frontend
 
-## Getting help and updates
+| Arquivo | Responsabilidade |
+|---|---|
+| `Dapp.js` | Conexão com o MetaMask, identificação do usuário, envio de transações, ranking |
+| `Vote.js` | Formulário de voto |
+| `SuperUser.js` | Painel do superusuário: `issueToken`, `votingOn` e `votingOff` |
+| `Ranking.js` | Tabela do ranking por saldo |
 
-If you need help with this project, or with Hardhat in general, please read [this guide](https://hardhat.org/hardhat-runner/docs/guides/getting-help) to learn where and how to get it.
+- **Interfaces diferentes:** usuários comuns veem só o formulário de voto; superusuários (owner ou professora) veem também o painel com `issueToken`, `votingOn` e `votingOff`.
+- **Selects de codinome:** listam apenas alunos (a professora é excluída). No voto, o próprio usuário também é excluído.
+- **Ranking por eventos:** os saldos são carregados uma vez ao conectar e, depois, atualizados a cada evento `Transfer` emitido pelo contrato (todo `_mint`, em `vote` e `issueToken`, emite `Transfer(0x0, destino, valor)`).
+- **Erros:** a mensagem do `require` do contrato é exibida ao usuário (ex.: *"Already voted for this user"*).
 
-For the latest news about Hardhat, [follow us on Twitter](https://twitter.com/HardhatHQ), and don't forget to star [our GitHub repository](https://github.com/NomicFoundation/hardhat)!
+---
 
-**Happy _building_!**
+## Decisões de projeto
+
+- **ERC-20 via OpenZeppelin 4.9.6.** A versão 5.x exige Solidity ≥ 0.8.20, cujo bytecode padrão usa o opcode `PUSH0`, não suportado pelo Hardhat 2.12.5 do boilerplate.
+- **Endereços em formato checksum (EIP-55)** no construtor, como o compilador Solidity exige.
+- **Professora consultada dinamicamente** (`users["roberta"]`), de modo que um `updateUser` da professora atualiza também a sua permissão.
+- **O owner local não vota.** Na blockchain local, o owner é a conta #0 do Hardhat, que não está na tabela de usuários. Pela regra "apenas usuários pré-autorizados", o contrato rejeita o voto dele com *"User not authorized"*. Em um deploy real, em que o owner é um aluno cadastrado, ele vota normalmente.
+- **Professora nos testes:** o endereço da professora não pertence às contas do Hardhat. Nos testes, `updateUser("roberta", ...)` aponta o codinome para uma carteira de teste, validando as permissões de superusuário.
+- **Requires extras:** `issueToken` e `vote` rejeitam codinomes inexistentes com *"User not found"*.
+- **Checks-effects-interactions** no `vote`: `hasVote` é marcado antes do `_mint`.
