@@ -14,7 +14,7 @@ Desenvolvida a partir do [Hardhat Boilerplate](https://github.com/NomicFoundatio
 Pré-requisitos: Node.js, Git e a extensão MetaMask no navegador.
 
 ```bash
-git clone <URL_DESTE_REPOSITORIO>
+git clone https://github.com/MiguelZMurad/turing-dapp
 cd turing-dapp
 npm install
 cd frontend && npm install && cd ..
